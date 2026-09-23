@@ -87,7 +87,6 @@ def registrar_usuario_ativo(uid):
         salvar_usuarios(usuarios)
 
 def menu_principal_teclado():
-    # Botões um embaixo do outro (coluna única)
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("🔍 Consulta CPF", callback_data="cons_cpf"),
@@ -161,7 +160,6 @@ def cmd_start(message):
     nome = message.from_user.first_name
     username = f"@{message.from_user.username}" if message.from_user.username else "Sem username"
 
-    # Regra para Grupos (verifica se tem mais de 200 membros)
     if message.chat.type != 'private':
         try:
             membros = bot.get_chat_member_count(cid)
@@ -175,7 +173,6 @@ def cmd_start(message):
 
     registrar_usuario_ativo(uid)
 
-    # Verifica se tem acesso liberado
     if not verificar_acesso(uid):
         texto_bloqueio = (
             "⛔ *ACESSO RESTRITO / PLANO EXPIRADO*\n\n"
@@ -206,7 +203,6 @@ def cmd_start(message):
             pass
         return
 
-    # Mensagem padronizada solicitada com Bem-vindo, Perfil, ID e Valores
     texto_sucesso = (
         f"👋 Bem-vindo, *{nome}*!\n"
         f"👤 *Perfil:* {nome}\n"
@@ -224,10 +220,11 @@ def cmd_start(message):
 
     if foto_url:
         try:
+            # Envia a foto com a legenda e os botões embutidos juntos
             bot.send_photo(cid, foto_url, caption=texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
             return
-        except:
-            pass
+        except Exception as e:
+            print(f"Erro ao enviar foto salva: {e}")
     
     bot.send_message(cid, texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
 
@@ -270,7 +267,7 @@ def painel_admin(message):
     texto = (
         "👑 *PAINEL DE ADMINISTRAÇÃO*\n\n"
         "• Para liberar usuário: `/liberar [ID] [DIAS]`\n"
-        "• Para alterar foto de boas-vindas: `/foto [URL da Imagem]` (ou mande a foto com a legenda `/foto`)\n"
+        "• Para alterar foto de boas-vindas: Mande a foto no chat com a legenda `/foto`\n"
         "• Para mandar notificação geral: `/notificação [Sua Mensagem]`"
     )
     bot.send_message(message.chat.id, texto, parse_mode="Markdown")
@@ -297,7 +294,7 @@ def comando_liberar_manual(message):
     except:
         bot.send_message(message.chat.id, "⚠️ Uso incorreto. Use: `/liberar [ID] [DIAS]`", parse_mode="Markdown")
 
-@bot.message_handler(commands=['foto'])
+@bot.message_handler(commands=['foto'], content_types=['photo', 'text'])
 def comando_foto(message):
     if message.from_user.id != ID_DONO:
         return
@@ -307,7 +304,7 @@ def comando_foto(message):
         config = carregar_config()
         config["foto_url"] = fileID
         salvar_config(config)
-        bot.send_message(message.chat.id, "✅ Foto de boas-vindas atualizada com sucesso!")
+        bot.send_message(message.chat.id, "✅ Foto de boas-vindas atualizada com sucesso! Agora envie /start para testar.")
         return
 
     try:
@@ -319,7 +316,7 @@ def comando_foto(message):
             salvar_config(config)
             bot.send_message(message.chat.id, "✅ URL da foto de boas-vindas atualizada com sucesso!")
         else:
-            bot.send_message(message.chat.id, "⚠️ Envie o link junto com o comando ou mande a foto com a legenda `/foto`.", parse_mode="Markdown")
+            bot.send_message(message.chat.id, "⚠️ Envie a foto diretamente no chat com a legenda `/foto`.", parse_mode="Markdown")
     except:
         bot.send_message(message.chat.id, "⚠️ Erro ao atualizar a foto.")
 
@@ -402,7 +399,7 @@ def processar_consulta(message):
             url = f"http://apisbrasilpro.site/consulta_serasa.php?nome={nome_formatado}"
         elif tipo == "cons_cep":
             url = f"http://apisbrasilpro.site/telefone0.php?cep={dado}"
-        elif tipo == "cons_parente":
+        eliftipo == "cons_parente": # type: ignore
             url = f"http://apisbrasilpro.site/consulta_serasa.php?cpf_parente={dado}"
         elif tipo == "cons_spc":
             if dado.isdigit():
