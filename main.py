@@ -40,6 +40,52 @@ def menu_principal_teclado():
     )
     return markup
 
+def formatar_resposta_json(conteudo_texto):
+    """Tenta transformar o JSON cru da API em um relatório bonito e organizado."""
+    try:
+        dados = json.loads(conteudo_texto)
+        if isinstance(dados, dict):
+            texto_formatado = "📋 *RELATÓRIO DA CONSULTA*\n\n"
+            for chave, valor in dados.items():
+                if valor: # Mostra apenas campos que têm dados
+                    texto_formatado += f"• *{str(chaves_amigaveis(chave))}:* {str(valor)}\n"
+            return texto_formatado
+        elif isinstance(dados, list):
+            if not dados:
+                return "⚠️ Nenhum registro encontrado."
+            texto_formatado = f"📋 *RELATÓRIO DA CONSULTA* (Total: {len(dados)})\n\n"
+            for i, item in enumerate(dados[:5], 1): # Limita aos 5 primeiros para não lotar o chat
+                texto_formatado += f"--- *Registro [{i}]* ---\n"
+                if isinstance(item, dict):
+                    for chave, valor in item.items():
+                        if valor:
+                            texto_formatado += f"• *{str(chaves_amigaveis(chave))}:* {str(valor)}\n"
+                else:
+                    texto_formatado += f"{str(item)}\n"
+                texto_formatado += "\n"
+            return texto_formatado
+    except:
+        pass
+    
+    # Se não for JSON válido, retorna o texto puro limitando o tamanho
+    if len(conteudo_texto) > 4000:
+        return f"```\n{conteudo_texto[:4000]}\n```\n\n*(Resultado cortado por excesso de caracteres)*"
+    return f"```\n{conteudo_texto}\n```"
+
+def chaves_amigaveis(chave):
+    """Deixa os nomes das chaves do banco mais bonitos se desejar"""
+    mapa = {
+        "cpf": "CPF",
+        "nome": "Nome",
+        "telefone": "Telefone",
+        "email": "E-mail",
+        "rg": "RG",
+        "cep": "CEP",
+        "nascimento": "Data de Nascimento",
+        "mae": "Nome da Mãe"
+    }
+    return mapa.get(str(chave).lower(), str(chave).capitalize())
+
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     cid = message.chat.id
@@ -103,16 +149,14 @@ def processar_consulta(message):
         
         if url:
             resposta = requests.get(url, timeout=15)
-            conteudo = resposta.text
+            conteudo_bruto = resposta.text
             
-            # Limita o tamanho caso a resposta seja muito longa para o Telegram
-            if len(conteudo) > 4000:
-                conteudo = conteudo[:4000] + "\n\n... (Resultado cortado por excesso de caracteres)"
-            
-            if not conteudo.strip():
-                conteudo = "Nenhum dado encontrado para esta consulta."
+            if not conteudo_bruto.strip():
+                resultado_final = "⚠️ Nenhum dado encontrado para esta consulta."
+            else:
+                resultado_final = formatar_resposta_json(conteudo_bruto)
 
-            bot.send_message(cid, f"📋 *Resultado da Consulta:*\n\n`{conteudo}`", parse_mode="Markdown")
+            bot.send_message(cid, resultado_final, parse_mode="Markdown")
         else:
             bot.send_message(cid, "⚠️ Tipo de consulta inválido.")
             
@@ -122,5 +166,5 @@ def processar_consulta(message):
     # Retorna o menu principal após a consulta
     bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
 
-print("[*] BOT DE CONSULTAS ONLINE...")
+print("[*] BOT DE CONSULTAS FORMATADO ONLINE...")
 bot.infinity_polling()
