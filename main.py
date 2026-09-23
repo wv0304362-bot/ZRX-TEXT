@@ -24,7 +24,7 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAHNsfkL5U4K9vRnjISyIx7PgfRt81RP7lw"
+TOKEN = "8718117505:AAGlPcThjYZso68lQT7u4HwohBcbFsBmxv4"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 
