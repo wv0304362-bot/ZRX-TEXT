@@ -29,10 +29,10 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-# COLOQUE AQUI O SEU NOVO TOKEN GERADO NO BOTFATHER:
-TOKEN = "8718117505:AAHy8VPucPudsZ5jypgbuQYWxC_KjDEyCVs"
+TOKEN = "8718117505:AAGlPcThjYZso68lQT7u4HwohBcbFsBmxv4"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
+LINK_WHATSAPP_CANAL = "https://whatsapp.com/channel/0029ValKVsrBFLgb53LmY22v"
 
 # Força o encerramento de qualquer conexão anterior presa na API do Telegram antes de iniciar
 import urllib.request
@@ -47,6 +47,27 @@ bot = telebot.TeleBot(TOKEN)
 aguardando_input = {}
 ARQUIVO_USUARIOS = "usuarios_autorizados.json"
 ARQUIVO_CONFIG = "config_foto.json"
+ARQUIVO_PRECOS = "config_precos.json"
+
+# Preços Padrão
+PRECOS_DEFAULT = {
+    "10": "R$ 15,00",
+    "30": "R$ 25,00",
+    "100": "R$ 40,00"
+}
+
+def carregar_precos():
+    if not os.path.exists(ARQUIVO_PRECOS):
+        return PRECOS_DEFAULT
+    with open(ARQUIVO_PRECOS, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except:
+            return PRECOS_DEFAULT
+
+def salvar_precos(dados):
+    with open(ARQUIVO_PRECOS, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
 
 def carregar_config():
     if not os.path.exists(ARQUIVO_CONFIG):
@@ -94,7 +115,17 @@ def registrar_usuario_ativo(uid):
         usuarios[str_uid] = {"validade": ""}
         salvar_usuarios(usuarios)
 
+# --- TECLADOS NO NOVO FORMATO EM TABELA E VERTICAL ---
 def menu_principal_teclado():
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        types.InlineKeyboardButton("💡 ᴀʟʟ - ᴍᴇɴᴜ (Ver Consultas)", callback_data="abrir_menu_consultas"),
+        types.InlineKeyboardButton("💰 ᴍʏ - ɪɴꜰᴏ (Ver Preços)", callback_data="ver_precos_menu"),
+        types.InlineKeyboardButton("📢 ᴄᴏɴᴛᴀᴄᴛ - ᴡʜᴀᴛꜱᴀᴘᴘ (Canal)", url=LINK_WHATSAPP_CANAL)
+    )
+    return markup
+
+def menu_consultas_tabela():
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("🔍 Consulta CPF", callback_data="cons_cpf"),
@@ -104,17 +135,20 @@ def menu_principal_teclado():
         types.InlineKeyboardButton("👤 Consulta Nome", callback_data="cons_nome"),
         types.InlineKeyboardButton("📍 Consulta CEP", callback_data="cons_cep"),
         types.InlineKeyboardButton("👥 Consulta Parente", callback_data="cons_parente"),
-        types.InlineKeyboardButton("📄 Consulta SPC (Doc/Nome)", callback_data="cons_spc")
+        types.InlineKeyboardButton("📄 Consulta SPC (Doc/Nome)", callback_data="cons_spc"),
+        types.InlineKeyboardButton("⬅️ Voltar ao Início", callback_data="voltar_inicio")
     )
     return markup
 
 def menu_planos_pagamento():
+    precos = carregar_precos()
     markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
-        types.InlineKeyboardButton("💎 10 Dias - R$ 15,00", url=LINK_CONTATO),
-        types.InlineKeyboardButton("💎 30 Dias - R$ 25,00", url=LINK_CONTATO),
-        types.InlineKeyboardButton("💎 100 Dias - R$ 40,00", url=LINK_CONTATO),
-        types.InlineKeyboardButton("🔄 Já paguei / Verificar Acesso", callback_data="verificar_liberacao")
+        types.InlineKeyboardButton(f"💎 10 Dias - {precos.get('10', 'R$ 15,00')}", url=LINK_CONTATO),
+        types.InlineKeyboardButton(f"💎 30 Dias - {precos.get('30', 'R$ 25,00')}", url=LINK_CONTATO),
+        types.InlineKeyboardButton(f"💎 100 Dias - {precos.get('100', 'R$ 40,00')}", url=LINK_CONTATO),
+        types.InlineKeyboardButton("🔄 Já paguei / Verificar Acesso", callback_data="verificar_liberacao"),
+        types.InlineKeyboardButton("⬅️ Voltar ao Início", callback_data="voltar_inicio")
     )
     return markup
 
@@ -161,7 +195,7 @@ def chaves_amigaveis(chave):
     }
     return mapa.get(str(chave).lower(), str(chave).capitalize())
 
-# --- PROCESSADOR DE CONSULTAS (PRIMEIRO NA ORDEM DE TEXTO) ---
+# --- PROCESSADOR DE CONSULTAS ---
 @bot.message_handler(func=lambda msg: msg.chat.id in aguardando_input)
 def processar_consulta(message):
     cid = message.chat.id
@@ -217,68 +251,59 @@ def processar_consulta(message):
     except Exception as e:
         bot.send_message(cid, f"❌ Erro ao conectar com a API: `{str(e)}`", parse_mode="Markdown")
     
-    bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
+    bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_consultas_tabela())
 
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     cid = message.chat.id
     uid = message.from_user.id
     nome = message.from_user.first_name
-    username = f"@{message.from_user.username}" if message.from_user.username else "Sem username"
 
     if message.chat.type != 'private':
-        try:
-            membros = bot.get_chat_member_count(cid)
-            if membros >= 200:
-                bot.send_message(cid, f"🚀 Grupo com {membros} membros detectado! Bot liberado para uso no grupo.")
-            else:
-                bot.send_message(cid, "🤖 *Bot de Consultas Online!*\nPara usar livremente, o grupo precisa ter pelo menos 200 membros ou você pode assinar no privado.")
-        except:
-            pass
         return
 
     registrar_usuario_ativo(uid)
 
     if not verificar_acesso(uid):
+        precos = carregar_precos()
         texto_bloqueio = (
             "⛔ *ACESSO RESTRITO / PLANO EXPIRADO*\n\n"
             "Este bot é pago. Escolha um dos planos abaixo para adquirir seu acesso:\n\n"
-            "​💎 *10 Dias:* R$ 15,00\n"
-            "​💎 *30 Dias:* R$ 25,00\n"
-            "​💎 *100 Dias:* R$ 40,00\n\n"
-            "Clique no botão abaixo para falar com o dono e comprar:"
+            f"​💎 *10 Dias:* {precos.get('10')}\n"
+            f"​💎 *30 Dias:* {precos.get('30')}\n"
+            f"​💎 *100 Dias:* {precos.get('100')}\n\n"
+            "Clique no botão abaixo para falar com o dono (@Zenithzrx) e comprar:"
         )
-        bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
-
-        notificacao_dono = (
-            "🚨 *NOVO USUÁRIO TENTOU USAR O BOT*\n\n"
-            f"👤 *Nome:* {nome}\n"
-            f"🆔 *ID:* `{uid}`\n"
-            f"🔗 *User:* {username}\n\n"
-            "Deseja liberar o acesso rapidamente?"
+        markup_bloqueio = types.InlineKeyboardMarkup(row_width=1)
+        markup_bloqueio.add(
+            types.InlineKeyboardButton("💬 Comprar com @Zenithzrx", url=LINK_CONTATO),
+            types.InlineKeyboardButton("🔄 Já paguei / Verificar Acesso", callback_data="verificar_liberacao")
         )
-        markup_dono = types.InlineKeyboardMarkup(row_width=3)
-        markup_dono.add(
-            types.InlineKeyboardButton("➕ 10 Dias", callback_data=f"liberar_{uid}_10"),
-            types.InlineKeyboardButton("➕ 30 Dias", callback_data=f"liberar_{uid}_30"),
-            types.InlineKeyboardButton("➕ 100 Dias", callback_data=f"liberar_{uid}_100")
-        )
-        try:
-            bot.send_message(ID_DONO, notificacao_dono, parse_mode="Markdown", reply_markup=markup_dono)
-        except:
-            pass
+        bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=markup_bloqueio)
         return
 
+    precos = carregar_precos()
     texto_sucesso = (
-        f"👋 Bem-vindo, *{nome}*!\n"
-        f"👤 *Perfil:* {nome}\n"
-        f"🆔 *ID:* `{uid}`\n\n"
-        "⚡ *PAINEL DE PUXAR DADOS VIP*\n\n"
-        "📋 *VALORES:*\n"
-        "​💎 *10 Dias:* R$ 15,00\n"
-        "​💎 *30 Dias:* R$ 25,00\n"
-        "​💎 *100 Dias:* R$ 40,00\n\n"
-        "Selecione abaixo o tipo de consulta que deseja realizar:"
+        f"✂️ **ᴢᴇɴɪᴛʜ - ᴠɪᴘ ᴘᴀɴᴇʟ**\n\n"
+        f"Hello — ═[ **@Zenithzrx** ]═\n"
+        f"★ ✂️\n\n"
+        f"╭──────────────────────────╮\n"
+        f"│  Painel de Consultas VIP │\n"
+        f"│  Alta performance 24h    │\n"
+        f"╰──────────────────────────╯\n\n"
+        f"┌──────────────────┬───────────────┐\n"
+        f"│   Information    │    Details    │\n"
+        f"├──────────────────┼───────────────┤\n"
+        f"│ Creator          │ @Zenithzrx    │\n"
+        f"│ Version          │ 15.0          │\n"
+        f"│ Type             │ Main Bot      │\n"
+        f"│ Mode             │ Public        │\n"
+        f"│ Status           │ 🟢 Online     │\n"
+        f"└──────────────────┴───────────────┘\n\n"
+        f"💡 *Escolha uma das opções abaixo:*\n"
+        f"- **10 Dias:** {precos.get('10')}\n"
+        f"- **30 Dias:** {precos.get('30')}\n"
+        f"- **100 Dias:** {precos.get('100')}"
     )
 
     config = carregar_config()
@@ -293,14 +318,57 @@ def cmd_start(message):
     
     bot.send_message(cid, texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
 
+@bot.callback_query_handler(func=lambda call: call.data in ["abrir_menu_consultas", "ver_precos_menu", "voltar_inicio"])
+def callback_navegacao_principal(call):
+    uid = call.from_user.id
+    cid = call.message.chat.id
+    
+    if call.data == "abrir_menu_consultas":
+        if not verificar_acesso(uid):
+            bot.answer_callback_query(call.id, "❌ Acesso expirado!", show_alert=True)
+            return
+        bot.edit_message_caption("📋 **MENU DE CONSULTAS DISPONÍVEIS:**\n\nSelecione abaixo o tipo de consulta:", chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_consultas_tabela())
+    
+    elif call.data == "ver_precos_menu":
+        precos = carregar_precos()
+        texto_precos = (
+            "💎 **TABELA DE PREÇOS E PLANOS VIP**\n\n"
+            f"• 10 Dias: `{precos.get('10')}`\n"
+            f"• 30 Dias: `{precos.get('30')}`\n"
+            f"• 100 Dias: `{precos.get('100')}`\n\n"
+            "Clique abaixo para falar com o suporte/comprar com @Zenithzrx:"
+        )
+        bot.edit_message_caption(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
+    
+    elif call.data == "voltar_inicio":
+        precos = carregar_precos()
+        texto_sucesso = (
+            f"✂️ **ᴢᴇɴɪᴛʜ - ᴠɪᴘ ᴘᴀɴᴇʟ**\n\n"
+            f"Hello — ═[ **@Zenithzrx** ]═\n"
+            f"★ ✂️\n\n"
+            f"┌──────────────────┬───────────────┐\n"
+            f"│   Information    │    Details    │\n"
+            f"├──────────────────┼───────────────┤\n"
+            f"│ Creator          │ @Zenithzrx    │\n"
+            f"│ Version          │ 15.0          │\n"
+            f"│ Type             │ Main Bot      │\n"
+            f"│ Mode             │ Public        │\n"
+            f"│ Status           │ 🟢 Online     │\n"
+            f"└──────────────────┴───────────────┘"
+        )
+        try:
+            bot.edit_message_caption(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+        except:
+            bot.edit_message_text(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+
 @bot.callback_query_handler(func=lambda call: call.data == "verificar_liberacao")
 def verificar_liberacao_btn(call):
     uid = call.from_user.id
     if verificar_acesso(uid):
         bot.answer_callback_query(call.id, "✅ Acesso liberado com sucesso!", show_alert=True)
-        bot.send_message(call.message.chat.id, "🎉 Seu acesso foi confirmado! Envie /start para abrir o painel.", reply_markup=menu_principal_teclado())
+        bot.send_message(call.message.chat.id, "🎉 Seu acesso foi confirmado! Envie /start para abrir o painel.")
     else:
-        bot.answer_callback_query(call.id, "❌ Seu acesso ainda não foi aprovado pelo dono.", show_alert=True)
+        bot.answer_callback_query(call.id, "❌ Seu acesso ainda não foi aprovado pelo dono (@Zenithzrx).", show_alert=True)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('liberar_'))
 def callback_liberar_dono(call):
@@ -329,13 +397,120 @@ def callback_liberar_dono(call):
 def painel_admin(message):
     if message.from_user.id != ID_DONO:
         return
+    precos = carregar_precos()
     texto = (
-        "👑 *PAINEL DE ADMINISTRAÇÃO*\n\n"
+        "👑 *PAINEL DE ADMINISTRAÇÃO - @Zenithzrx*\n\n"
         "• Para liberar usuário: `/liberar [ID] [DIAS]`\n"
-        "• Para alterar foto de boas-vindas: Mande a foto no chat com a legenda `/foto`\n"
-        "• Para mandar notificação geral: `/notificação [Sua Mensagem]`"
+        "• Para alterar foto: Mande a foto com a legenda `/foto`\n"
+        "• Para modificar preços: `/setpreco [10/30/100] [Valor]`\n"
+        "• Para clonar/adicionar novo bot: `/adicionar_bot [TOKEN]`\n"
+        "• Para notificar todos: `/notificação [Mensagem]`\n\n"
+        f"📋 **Preços Atuais:**\n- 10d: {precos.get('10')}\n- 30d: {precos.get('30')}\n- 100d: {precos.get('100')}"
     )
     bot.send_message(message.chat.id, texto, parse_mode="Markdown")
+
+@bot.message_handler(commands=['setpreco'])
+def comando_set_preco(message):
+    if message.from_user.id != ID_DONO:
+        return
+    try:
+        partes = message.text.split(maxsplit=2)
+        plano = partes[1]
+        novo_valor = partes[2]
+        
+        if plano not in ["10", "30", "100"]:
+            bot.send_message(message.chat.id, "⚠️ Use: `/setpreco 10 R$ 15,00` (dias válidos: 10, 30, 100)", parse_mode="Markdown")
+            return
+            
+        precos = carregar_precos()
+        precos[plano] = novo_valor
+        salvar_precos(precos)
+        bot.send_message(message.chat.id, f"✅ Preço do plano de {plano} dias atualizado para: `{novo_valor}`", parse_mode="Markdown")
+    except:
+        bot.send_message(message.chat.id, "⚠️ Formato incorreto. Use: `/setpreco [10/30/100] [Valor]`", parse_mode="Markdown")
+
+@bot.message_handler(commands=['adicionar_bot'])
+def comando_adicionar_bot(message):
+    if message.from_user.id != ID_DONO:
+        return
+    try:
+        partes = message.text.split(maxsplit=1)
+        token_novo = partes[1].strip()
+        
+        # Cria um arquivo separado ou script autónomo para o novo bot do cliente
+        nome_arquivo_bot = f"bot_cliente_{int(time.time())}.py"
+        
+        codigo_template = f'''# -*- coding: utf-8 -*-
+import telebot
+from telebot import types
+import os, json, requests, time
+from datetime import datetime, timedelta
+
+TOKEN = "{token_novo}"
+ID_DONO = {ID_DONO}
+LINK_CONTATO = "{LINK_CONTATO}"
+LINK_WHATSAPP_CANAL = "{LINK_WHATSAPP_CANAL}"
+
+bot = telebot.TeleBot(TOKEN)
+aguardando_input = {{}}
+ARQUIVO_USUf = "usuarios_{token_novo[:6]}.json"
+
+def carregar_u():
+    if not os.path.exists(ARQUIVO_USUf): return {{}}
+    with open(ARQUIVO_USUf, 'r', encoding='utf-8') as f:
+        try: return json.load(f)
+        except: return {{}}
+
+def salvar_u(d):
+    with open(ARQUIVO_USUf, 'w', encoding='utf-8') as f:
+        json.dump(d, f, indent=4, ensure_ascii=False)
+
+def verificar(uid):
+    if int(uid) == ID_DONO: return True
+    us = carregar_u()
+    if str(uid) in us and us[str(uid)].get("v"):
+        return datetime.now() < datetime.fromisoformat(us[str_uid]["v"])
+    return False
+
+@bot.message_handler(commands=['start'])
+def start_c(message):
+    cid = message.chat.id
+    uid = message.from_user.id
+    if not verificar(uid):
+        txt = "⛔ **ACESSO RESTRITO - PAGO**\\n\\nAdquira seu acesso com @Zenithzrx:"
+        mk = types.InlineKeyboardMarkup()
+        mk.add(types.InlineKeyboardButton("💬 Comprar com @Zenithzrx", url=LINK_CONTATO))
+        bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
+        return
+    
+    txt = (
+        "✂️ **ᴢᴇɴɪᴛʜ - ᴠɪᴘ ᴘᴀɴᴇʟ**\\n\\n"
+        "Hello — ═[ **@Zenithzrx** ]═\\n\\n"
+        "┌──────────────────┬───────────────┐\\n"
+        "│ Creator          │ @Zenithzrx    │\\n"
+        "│ Status           │ 🟢 Online     │\\n"
+        "└──────────────────┴───────────────┘"
+    )
+    mk = types.InlineKeyboardMarkup(row_width=1)
+    mk.add(
+        types.InlineKeyboardButton("💡 ᴀʟʟ - ᴍᴇɴᴜ", callback_data="menu"),
+        types.InlineKeyboardButton("💰 ᴍʏ - ɪɴꜰᴏ (Preços)", url=LINK_CONTATO),
+        types.InlineKeyboardButton("📢 WhatsApp Canal", url=LINK_WHATSAPP_CANAL)
+    )
+    bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
+
+print("Bot cliente rodando...")
+bot.infinity_polling()
+'''
+        with open(nome_arquivo_bot, 'w', encoding='utf-8') as f:
+            f.write(codigo_template)
+            
+        # Inicia o bot do cliente em background de forma independente
+        threading.Thread(target=lambda: os.system(f"python {nome_arquivo_bot}"), daemon=True).start()
+        
+        bot.send_message(message.chat.id, f"✅ **Bot gerado e ativado com sucesso!**\nO clone já está rodando em background com as mesmas características.\nArquivo gerado: `{nome_arquivo_bot}`", parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"⚠️ Erro ao gerar bot: `{str(e)}`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['liberar'])
 def comando_liberar_manual(message):
@@ -423,7 +598,7 @@ def callback_consultas(call):
     instrucoes = {
         "cons_cpf": "📌 Envie o **CPF** (somente números) para realizar a consulta:",
         "cons_tel": "📱 Envie o **Telefone** (com DDD) para realizar a consulta:",
-        "cons_email": "📧 Envie o **-mail** para realizar a consulta:",
+        "cons_email": "📧 Envie o **E-mail** para realizar a consulta:",
         "cons_rg": "🪪 Envie o **RG** para realizar a consulta:",
         "cons_nome": "👤 Envie o **Nome completo** para realizar a consulta:",
         "cons_cep": "📍 Envie o **CEP** para realizar a consulta:",
@@ -435,6 +610,5 @@ def callback_consultas(call):
     bot.answer_callback_query(call.id)
     bot.send_message(cid, instrucoes.get(tipo, "Envie o dado solicitado:"), parse_mode="Markdown")
 
-print("[*] BOT DE CONSULTAS VIP COMPLETO ONLINE...")
+print("[*] BOT DE CONSULTAS VIP ESTILO SHOYU ONLINE...")
 bot.infinity_polling(skip_pending=True)
- 
