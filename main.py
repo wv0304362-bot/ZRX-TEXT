@@ -29,7 +29,7 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAE3Mzg1LoN6xXitx6qmLPXX08Rlstxct-w"
+TOKEN = "8718117505:AAHUIEINVPuQ8GFdunmgR8ckdADLZcaIL9E"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 LINK_WHATSAPP_CANAL = "https://whatsapp.com/channel/0029ValKVsrBFLgb53LmY22v"
@@ -278,14 +278,14 @@ def cmd_start(message):
         bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=markup_bloqueio)
         return
 
-    # Layout limpo em tabela idêntico ao modelo da imagem de referência
+    # Tabela idêntica à sua imagem de referência (com bloco de código cobrindo a largura limpa)
     texto_sucesso = (
         "✂️ **Shoyu - Xposed .**\n\n"
         "Hello — ═[ **@Zenithzrx** ]═\n"
         "★ ✂️\n\n"
         "This bot is a multi-session VIP consultation bot that allows you to manage queries from a single interface.\n\n"
         "```text\n"
-        "   Information         Details   \n"
+        " Information         Details   \n"
         "───────────────────────────────\n"
         " Creator            @Zenithzrx \n"
         " Version            15.0       \n"
@@ -316,7 +316,10 @@ def callback_navegacao_principal(call):
         if not verificar_acesso(uid):
             bot.answer_callback_query(call.id, "❌ Acesso expirado!", show_alert=True)
             return
-        bot.edit_message_caption("📋 **MENU DE CONSULTAS DISPONÍVEIS:**\n\nSelecione abaixo o tipo de consulta:", chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_consultas_tabela())
+        try:
+            bot.edit_message_caption("📋 **MENU DE CONSULTAS DISPONÍVEIS:**\n\nSelecione abaixo o tipo de consulta:", chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_consultas_tabela())
+        except:
+            bot.edit_message_text("📋 **MENU DE CONSULTAS DISPONÍVEIS:**\n\nSelecione abaixo o tipo de consulta:", chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_consultas_tabela())
     
     elif call.data == "ver_precos_menu":
         precos = carregar_precos()
@@ -327,15 +330,19 @@ def callback_navegacao_principal(call):
             f"• 100 Dias: `{precos.get('100')}`\n\n"
             "Clique abaixo para falar com o suporte:"
         )
-        bot.edit_message_caption(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
+        try:
+            bot.edit_message_caption(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
+        except:
+            bot.edit_message_text(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
     
     elif call.data == "voltar_inicio":
         texto_sucesso = (
             "✂️ **Shoyu - Xposed .**\n\n"
             "Hello — ═[ **@Zenithzrx** ]═\n"
             "★ ✂️\n\n"
+            "This bot is a multi-session VIP consultation bot that allows you to manage queries from a single interface.\n\n"
             "```text\n"
-            "   Information         Details   \n"
+            " Information         Details   \n"
             "───────────────────────────────\n"
             " Creator            @Zenithzrx \n"
             " Version            15.0       \n"
@@ -469,7 +476,7 @@ def start_c(message):
         "✂️ **Shoyu - Xposed .**\\n\\n"
         "Hello — ═[ **@Zenithzrx** ]═\\n\\n"
         "```text\\n"
-        "   Information         Details   \\n"
+        " Information         Details   \\n"
         "───────────────────────────────\\n"
         " Creator            @Zenithzrx \\n"
         " Status             🟢 Online  \\n"
@@ -477,7 +484,7 @@ def start_c(message):
     )
     mk = types.InlineKeyboardMarkup(row_width=1)
     mk.add(
-        types.InlineKeyboardButton("💡 all - menu", callback_data="menu"),
+        types.InlineKeyboardButton("💡 all - menu", callback_data="abrir_menu_consultas"),
         types.InlineKeyboardButton("💰 my - info (Preços)", url=LINK_CONTATO),
         types.InlineKeyboardButton("📢 WhatsApp Canal", url=LINK_WHATSAPP_CANAL)
     )
