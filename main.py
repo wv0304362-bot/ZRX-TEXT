@@ -28,6 +28,14 @@ ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 
 bot = telebot.TeleBot(TOKEN)
+
+# --- CORREÇÃO DO ERRO DE WEBHOOK TRAVADO ---
+try:
+    bot.remove_webhook()
+except:
+    pass
+# ------------------------------------------
+
 aguardando_input = {}
 ARQUIVO_USUARIOS = "usuarios_autorizados.json"
 ARQUIVO_CONFIG = "config_foto.json"
