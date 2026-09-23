@@ -29,7 +29,7 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAHUIEINVPuQ8GFdunmgR8ckdADLZcaIL9E"
+TOKEN = "8718117505:AAEsJt_rm7JP33p9xjvM48SJFDV7OxLsdoQ"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 LINK_WHATSAPP_CANAL = "https://whatsapp.com/channel/0029ValKVsrBFLgb53LmY22v"
@@ -114,13 +114,19 @@ def registrar_usuario_ativo(uid):
         usuarios[str_uid] = {"validade": ""}
         salvar_usuarios(usuarios)
 
-def menu_principal_teclado():
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        types.InlineKeyboardButton("💡 all - menu (Ver Consultas)", callback_data="abrir_menu_consultas"),
-        types.InlineKeyboardButton("💰 my - info (Ver Preços)", callback_data="ver_precos_menu"),
-        types.InlineKeyboardButton("📢 contact - whatsapp (Canal)", url=LINK_WHATSAPP_CANAL)
+def menu_principal_teclado(uid):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(types.InlineKeyboardButton("💡 Learn Features", callback_data="learn_features"))
+    markup.row(
+        types.InlineKeyboardButton("📄 all - menu", callback_data="abrir_menu_consultas"),
+        types.InlineKeyboardButton("🧬 action - menu", callback_data="ver_precos_menu")
     )
+    markup.add(types.InlineKeyboardButton("❓ my - info", callback_data="ver_precos_menu"))
+    markup.add(types.InlineKeyboardButton("↗️ contact - owner", url=LINK_CONTATO))
+    
+    if int(uid) == ID_DONO:
+        markup.add(types.InlineKeyboardButton("🤖 Adicionar / Clonar Bot", callback_data="pedir_token_clonar"))
+        
     return markup
 
 def menu_consultas_tabela():
@@ -203,7 +209,15 @@ def processar_consulta(message):
         aguardando_input.pop(cid, None)
         return
 
-    tipo = aguardando_input.pop(cid, None)
+    tipo = aguardando_input.get(cid)
+    
+    if tipo == "aguardando_token_clone":
+        aguardando_input.pop(cid, None)
+        token_novo = message.text.strip()
+        criar_clone_bot(cid, token_novo)
+        return
+
+    aguardando_input.pop(cid, None)
     dado = message.text.strip()
     
     bot.send_message(cid, "🔍 Buscando informações na base de dados, aguarde...")
@@ -250,6 +264,80 @@ def processar_consulta(message):
     
     bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_consultas_tabela())
 
+def criar_clone_bot(cid, token_novo):
+    try:
+        nome_arquivo_bot = f"bot_cliente_{int(time.time())}.py"
+        codigo_template = f'''# -*- coding: utf-8 -*-
+import telebot
+from telebot import types
+import os, json, requests, time
+from datetime import datetime, timedelta
+
+TOKEN = "{token_novo}"
+ID_DONO = {ID_DONO}
+LINK_CONTATO = "{LINK_CONTATO}"
+LINK_WHATSAPP_CANAL = "{LINK_WHATSAPP_CANAL}"
+
+bot = telebot.TeleBot(TOKEN)
+ARQUIVO_USUf = "usuarios_{token_novo[:6]}.json"
+
+def carregar_u():
+    if not os.path.exists(ARQUIVO_USUf): return {{}}
+    with open(ARQUIVO_USUf, 'r', encoding='utf-8') as f:
+        try: return json.load(f)
+        except: return {{}}
+
+def verificar(uid):
+    if int(uid) == ID_DONO: return True
+    us = carregar_u()
+    if str(uid) in us and us[str(uid)].get("v"):
+        return datetime.now() < datetime.fromisoformat(us[str(uid)]["v"])
+    return False
+
+@bot.message_handler(commands=['start'])
+def start_c(message):
+    cid = message.chat.id
+    uid = message.from_user.id
+    if not verificar(uid):
+        txt = "⛔ **ACESSO RESTRITO - PAGO**\\n\\nAdquira seu acesso com @Zenithzrx:"
+        mk = types.InlineKeyboardMarkup()
+        mk.add(types.InlineKeyboardButton("💬 Comprar com @Zenithzrx", url=LINK_CONTATO))
+        bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
+        return
+    
+    txt = (
+        "✂️ **Shoyu - Xposed .**\\n\\n"
+        "Hello — ═[ **@Zenithzrx** ]═\\n\\n"
+        "> 📋 **Information & Details**\\n"
+        "> ──────────────────\\n"
+        "> • **Creator:** @Zenithzrx\\n"
+        "> • **Version:** 15.0\\n"
+        "> • **Type:** Main Bot\\n"
+        "> • **Mode:** Public\\n"
+        "> • **Status:** 🟢 Online\\n\\n"
+        "- Since 2021"
+    )
+    mk = types.InlineKeyboardMarkup(row_width=2)
+    mk.add(types.InlineKeyboardButton("💡 Learn Features", callback_data="learn"))
+    mk.row(
+        types.InlineKeyboardButton("📄 all - menu", callback_data="menu"),
+        types.InlineKeyboardButton("🧬 action - menu", callback_data="menu")
+    )
+    mk.add(types.InlineKeyboardButton("❓ my - info", callback_data="info"))
+    mk.add(types.InlineKeyboardButton("↗️ contact - owner", url=LINK_CONTATO))
+    bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
+
+print("Bot cliente rodando...")
+bot.infinity_polling()
+'''
+        with open(nome_arquivo_bot, 'w', encoding='utf-8') as f:
+            f.write(codigo_template)
+            
+        threading.Thread(target=lambda: os.system(f"python {nome_arquivo_bot}"), daemon=True).start()
+        bot.send_message(cid, "✅ **Bot clonado com sucesso!** A nova instância está rodando em background.", parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(cid, f"⚠️ Erro ao gerar bot: `{str(e)}`", parse_mode="Markdown")
+
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     cid = message.chat.id
@@ -278,21 +366,19 @@ def cmd_start(message):
         bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=markup_bloqueio)
         return
 
-    # Tabela idêntica à sua imagem de referência (com bloco de código cobrindo a largura limpa)
+    # Usando o bloco de citação do Telegram (>) para simular o painel integrado idêntico ao da imagem
     texto_sucesso = (
         "✂️ **Shoyu - Xposed .**\n\n"
         "Hello — ═[ **@Zenithzrx** ]═\n"
         "★ ✂️\n\n"
-        "This bot is a multi-session VIP consultation bot that allows you to manage queries from a single interface.\n\n"
-        "```text\n"
-        " Information         Details   \n"
-        "───────────────────────────────\n"
-        " Creator            @Zenithzrx \n"
-        " Version            15.0       \n"
-        " Type               Main Bot   \n"
-        " Mode               Public     \n"
-        " Status             🟢 Online  \n"
-        "```"
+        "> 📋 **Information & Details**\n"
+        "> ──────────────────\n"
+        "> • **Creator:** @Zenithzrx\n"
+        "> • **Version:** 15.0\n"
+        "> • **Type:** Main Bot\n"
+        "> • **Mode:** Public\n"
+        "> • **Status:** 🟢 Online\n\n"
+        "- Since 2021"
     )
 
     config = carregar_config()
@@ -300,14 +386,14 @@ def cmd_start(message):
 
     if foto_url:
         try:
-            bot.send_photo(cid, foto_url, caption=texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+            bot.send_photo(cid, foto_url, caption=texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado(uid))
             return
         except Exception as e:
             print(f"Erro ao enviar foto salva: {e}")
     
-    bot.send_message(cid, texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+    bot.send_message(cid, texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado(uid))
 
-@bot.callback_query_handler(func=lambda call: call.data in ["abrir_menu_consultas", "ver_precos_menu", "voltar_inicio"])
+@bot.callback_query_handler(func=lambda call: call.data in ["abrir_menu_consultas", "ver_precos_menu", "voltar_inicio", "learn_features", "pedir_token_clonar"])
 def callback_navegacao_principal(call):
     uid = call.from_user.id
     cid = call.message.chat.id
@@ -334,27 +420,36 @@ def callback_navegacao_principal(call):
             bot.edit_message_caption(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
         except:
             bot.edit_message_text(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
-    
+            
+    elif call.data == "learn_features":
+        bot.answer_callback_query(call.id, "💡 Este bot permite gerenciar consultas e ferramentas VIP de forma integrada.", show_alert=True)
+
+    elif call.data == "pedir_token_clonar":
+        if uid != ID_DONO:
+            bot.answer_callback_query(call.id, "❌ Apenas o dono pode clonar o bot!", show_alert=True)
+            return
+        aguardando_input[cid] = "aguardando_token_clone"
+        bot.answer_callback_query(call.id)
+        bot.send_message(cid, "🤖 Envie o **TOKEN** do novo bot do Telegram que deseja criar:")
+
     elif call.data == "voltar_inicio":
         texto_sucesso = (
             "✂️ **Shoyu - Xposed .**\n\n"
             "Hello — ═[ **@Zenithzrx** ]═\n"
             "★ ✂️\n\n"
-            "This bot is a multi-session VIP consultation bot that allows you to manage queries from a single interface.\n\n"
-            "```text\n"
-            " Information         Details   \n"
-            "───────────────────────────────\n"
-            " Creator            @Zenithzrx \n"
-            " Version            15.0       \n"
-            " Type               Main Bot   \n"
-            " Mode               Public     \n"
-            " Status             🟢 Online  \n"
-            "```"
+            "> 📋 **Information & Details**\n"
+            "> ──────────────────\n"
+            "> • **Creator:** @Zenithzrx\n"
+            "> • **Version:** 15.0\n"
+            "> • **Type:** Main Bot\n"
+            "> • **Mode:** Public\n"
+            "> • **Status:** 🟢 Online\n\n"
+            "- Since 2021"
         )
         try:
-            bot.edit_message_caption(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+            bot.edit_message_caption(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado(uid))
         except:
-            bot.edit_message_text(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+            bot.edit_message_text(texto_sucesso, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_principal_teclado(uid))
 
 @bot.callback_query_handler(func=lambda call: call.data == "verificar_liberacao")
 def verificar_liberacao_btn(call):
@@ -431,73 +526,7 @@ def comando_adicionar_bot(message):
     try:
         partes = message.text.split(maxsplit=1)
         token_novo = partes[1].strip()
-        
-        nome_arquivo_bot = f"bot_cliente_{int(time.time())}.py"
-        
-        codigo_template = f'''# -*- coding: utf-8 -*-
-import telebot
-from telebot import types
-import os, json, requests, time
-from datetime import datetime, timedelta
-
-TOKEN = "{token_novo}"
-ID_DONO = {ID_DONO}
-LINK_CONTATO = "{LINK_CONTATO}"
-LINK_WHATSAPP_CANAL = "{LINK_WHATSAPP_CANAL}"
-
-bot = telebot.TeleBot(TOKEN)
-ARQUIVO_USUf = "usuarios_{token_novo[:6]}.json"
-
-def carregar_u():
-    if not os.path.exists(ARQUIVO_USUf): return {{}}
-    with open(ARQUIVO_USUf, 'r', encoding='utf-8') as f:
-        try: return json.load(f)
-        except: return {{}}
-
-def verificar(uid):
-    if int(uid) == ID_DONO: return True
-    us = carregar_u()
-    if str(uid) in us and us[str(uid)].get("v"):
-        return datetime.now() < datetime.fromisoformat(us[str(uid)]["v"])
-    return False
-
-@bot.message_handler(commands=['start'])
-def start_c(message):
-    cid = message.chat.id
-    uid = message.from_user.id
-    if not verificar(uid):
-        txt = "⛔ **ACESSO RESTRITO - PAGO**\\n\\nAdquira seu acesso com @Zenithzrx:"
-        mk = types.InlineKeyboardMarkup()
-        mk.add(types.InlineKeyboardButton("💬 Comprar com @Zenithzrx", url=LINK_CONTATO))
-        bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
-        return
-    
-    txt = (
-        "✂️ **Shoyu - Xposed .**\\n\\n"
-        "Hello — ═[ **@Zenithzrx** ]═\\n\\n"
-        "```text\\n"
-        " Information         Details   \\n"
-        "───────────────────────────────\\n"
-        " Creator            @Zenithzrx \\n"
-        " Status             🟢 Online  \\n"
-        "```"
-    )
-    mk = types.InlineKeyboardMarkup(row_width=1)
-    mk.add(
-        types.InlineKeyboardButton("💡 all - menu", callback_data="abrir_menu_consultas"),
-        types.InlineKeyboardButton("💰 my - info (Preços)", url=LINK_CONTATO),
-        types.InlineKeyboardButton("📢 WhatsApp Canal", url=LINK_WHATSAPP_CANAL)
-    )
-    bot.send_message(cid, txt, parse_mode="Markdown", reply_markup=mk)
-
-print("Bot cliente rodando...")
-bot.infinity_polling()
-'''
-        with open(nome_arquivo_bot, 'w', encoding='utf-8') as f:
-            f.write(codigo_template)
-            
-        threading.Thread(target=lambda: os.system(f"python {nome_arquivo_bot}"), daemon=True).start()
-        bot.send_message(message.chat.id, f"✅ **Bot clonado com sucesso!** Rodando em background.", parse_mode="Markdown")
+        criar_clone_bot(message.chat.id, token_novo)
     except Exception as e:
         bot.send_message(message.chat.id, f"⚠️ Erro ao gerar bot: `{str(e)}`", parse_mode="Markdown")
 
