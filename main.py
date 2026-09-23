@@ -198,13 +198,13 @@ def cmd_start(message):
             pass
         return
 
-    # Mensagem de boas-vindas personalizada solicitada
+    # Mensagem padronizada solicitada com Bem-vindo, Perfil, ID e Valores
     texto_sucesso = (
         f"👋 Bem-vindo, *{nome}*!\n"
         f"👤 *Perfil:* {nome}\n"
         f"🆔 *ID:* `{uid}`\n\n"
         "⚡ *PAINEL DE PUXAR DADOS VIP*\n\n"
-        "📋 *VALORES DOS PLANOS:*\n"
+        "📋 *VALORES:*\n"
         "​💎 *10 Dias:* R$ 15,00\n"
         "​💎 *30 Dias:* R$ 25,00\n"
         "​💎 *100 Dias:* R$ 40,00\n\n"
@@ -294,20 +294,14 @@ def comando_foto(message):
     if message.from_user.id != ID_DONO:
         return
     
-    # Se mandou uma foto diretamente com a legenda /foto
     if message.photo:
         fileID = message.photo[-1].file_id
-        file_info = bot.get_file(fileID)
-        downloaded_file = bot.download_file(file_info.file_path)
-        
-        # Salva o file_id do Telegram diretamente
         config = carregar_config()
         config["foto_url"] = fileID
         salvar_config(config)
         bot.send_message(message.chat.id, "✅ Foto de boas-vindas atualizada com sucesso!")
         return
 
-    # Se mandou um link via texto (/foto https://...)
     try:
         partes = message.text.split(maxsplit=1)
         if len(partes) > 1:
@@ -427,5 +421,5 @@ def processar_consulta(message):
     
     bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
 
-print("[*] BOT DE CONSULTAS VIP OTIMIZADO ONLINE...")
+print("[*] BOT DE CONSULTAS VIP COMPLETO ONLINE...")
 bot.infinity_polling()
