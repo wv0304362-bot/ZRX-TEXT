@@ -5,6 +5,7 @@ import os
 import json
 import requests
 import threading
+import time
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -27,14 +28,15 @@ TOKEN = "8718117505:AAHNsfkL5U4K9vRnjISyIx7PgfRt81RP7lw"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 
-bot = telebot.TeleBot(TOKEN)
-
-# --- CORREÇÃO DO ERRO DE WEBHOOK TRAVADO ---
+# Força o encerramento de qualquer conexão anterior presa na API do Telegram antes de iniciar
+import urllib.request
 try:
-    bot.remove_webhook()
-except:
-    pass
-# ------------------------------------------
+    urllib.request.urlopen(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=True").read()
+    time.sleep(1)
+except Exception as e:
+    print(f"Erro ao limpar webhook anterior: {e}")
+
+bot = telebot.TeleBot(TOKEN)
 
 aguardando_input = {}
 ARQUIVO_USUARIOS = "usuarios_autorizados.json"
@@ -153,7 +155,7 @@ def chaves_amigaveis(chave):
     }
     return mapa.get(str(chave).lower(), str(chave).capitalize())
 
-# --- PROCESSADOR DE CONSULTAS COLOCADO ANTES DOS OUTROS HANDLERS DE TEXTO PARA NÃO TRAVAR ---
+# --- PROCESSADOR DE CONSULTAS (PRIMEIRO NA ORDEM DE TEXTO) ---
 @bot.message_handler(func=lambda msg: msg.chat.id in aguardando_input)
 def processar_consulta(message):
     cid = message.chat.id
@@ -428,4 +430,4 @@ def callback_consultas(call):
     bot.send_message(cid, instrucoes.get(tipo, "Envie o dado solicitado:"), parse_mode="Markdown")
 
 print("[*] BOT DE CONSULTAS VIP COMPLETO ONLINE...")
-bot.infinity_polling()
+bot.infinity_polling(skip_pending=True)
