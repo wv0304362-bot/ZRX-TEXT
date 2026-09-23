@@ -29,12 +29,12 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAG6aod9bgi_mMnm15aIbChZfLodKfRqoLg"
+TOKEN = "8718117505:AAE3Mzg1LoN6xXitx6qmLPXX08Rlstxct-w"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 LINK_WHATSAPP_CANAL = "https://whatsapp.com/channel/0029ValKVsrBFLgb53LmY22v"
 
-# Força o encerramento de qualquer conexão anterior presa na API do Telegram antes de iniciar
+# Força o encerramento de qualquer conexão anterior presa na API do Telegram para evitar erro 409
 import urllib.request
 try:
     urllib.request.urlopen(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=True").read()
@@ -278,14 +278,14 @@ def cmd_start(message):
         bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=markup_bloqueio)
         return
 
-    precos = carregar_precos()
+    # Layout limpo em tabela idêntico ao modelo da imagem de referência
     texto_sucesso = (
         "✂️ **Shoyu - Xposed .**\n\n"
         "Hello — ═[ **@Zenithzrx** ]═\n"
         "★ ✂️\n\n"
         "This bot is a multi-session VIP consultation bot that allows you to manage queries from a single interface.\n\n"
         "```text\n"
-        "  Information         Details   \n"
+        "   Information         Details   \n"
         "───────────────────────────────\n"
         " Creator            @Zenithzrx \n"
         " Version            15.0       \n"
@@ -330,13 +330,12 @@ def callback_navegacao_principal(call):
         bot.edit_message_caption(texto_precos, chat_id=cid, message_id=call.message.message_id, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
     
     elif call.data == "voltar_inicio":
-        precos = carregar_precos()
         texto_sucesso = (
             "✂️ **Shoyu - Xposed .**\n\n"
             "Hello — ═[ **@Zenithzrx** ]═\n"
             "★ ✂️\n\n"
             "```text\n"
-            "  Information         Details   \n"
+            "   Information         Details   \n"
             "───────────────────────────────\n"
             " Creator            @Zenithzrx \n"
             " Version            15.0       \n"
@@ -470,7 +469,7 @@ def start_c(message):
         "✂️ **Shoyu - Xposed .**\\n\\n"
         "Hello — ═[ **@Zenithzrx** ]═\\n\\n"
         "```text\\n"
-        "  Information         Details   \\n"
+        "   Information         Details   \\n"
         "───────────────────────────────\\n"
         " Creator            @Zenithzrx \\n"
         " Status             🟢 Online  \\n"
@@ -593,5 +592,5 @@ def callback_consultas(call):
     bot.answer_callback_query(call.id)
     bot.send_message(cid, instrucoes.get(tipo, "Envie o dado solicitado:"), parse_mode="Markdown")
 
-print("[*] BOT DE CONSULTAS VIP ESTILO SHOYU ALINHADO ONLINE...")
+print("[*] BOT DE CONSULTAS VIP ESTILO SHOYU PERFEITO ONLINE...")
 bot.infinity_polling(skip_pending=True)
