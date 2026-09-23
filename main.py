@@ -29,7 +29,8 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAGlPcThjYZso68lQT7u4HwohBcbFsBmxv4"
+# COLOQUE AQUI O SEU NOVO TOKEN GERADO NO BOTFATHER:
+TOKEN = "8718117505:AAHy8VPucPudsZ5jypgbuQYWxC_KjDEyCVs"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 
@@ -422,7 +423,7 @@ def callback_consultas(call):
     instrucoes = {
         "cons_cpf": "📌 Envie o **CPF** (somente números) para realizar a consulta:",
         "cons_tel": "📱 Envie o **Telefone** (com DDD) para realizar a consulta:",
-        "cons_email": "📧 Envie o **E-mail** para realizar a consulta:",
+        "cons_email": "📧 Envie o **-mail** para realizar a consulta:",
         "cons_rg": "🪪 Envie o **RG** para realizar a consulta:",
         "cons_nome": "👤 Envie o **Nome completo** para realizar a consulta:",
         "cons_cep": "📍 Envie o **CEP** para realizar a consulta:",
@@ -436,3 +437,4 @@ def callback_consultas(call):
 
 print("[*] BOT DE CONSULTAS VIP COMPLETO ONLINE...")
 bot.infinity_polling(skip_pending=True)
+ 
