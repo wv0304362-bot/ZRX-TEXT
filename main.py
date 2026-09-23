@@ -9,12 +9,17 @@ import time
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-# --- SERVIDOR WEB PARA O RENDER NÃO DERRUBAR O BOT ---
+# --- SERVIDOR WEB PARA O RENDER E UPTIMEROBOT ---
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
+        self.send_header("Content-type", "text/plain; charset=utf-8")
         self.end_headers()
         self.wfile.write(b"Bot de Consultas VIP Rodando 24h!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
 
 def run_server():
     port = int(os.environ.get("PORT", 10000))
