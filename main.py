@@ -153,6 +153,64 @@ def chaves_amigaveis(chave):
     }
     return mapa.get(str(chave).lower(), str(chave).capitalize())
 
+# --- PROCESSADOR DE CONSULTAS COLOCADO ANTES DOS OUTROS HANDLERS DE TEXTO PARA NÃO TRAVAR ---
+@bot.message_handler(func=lambda msg: msg.chat.id in aguardando_input)
+def processar_consulta(message):
+    cid = message.chat.id
+    uid = message.from_user.id
+    
+    if not verificar_acesso(uid):
+        bot.send_message(cid, "❌ Seu acesso expirou.")
+        aguardando_input.pop(cid, None)
+        return
+
+    tipo = aguardando_input.pop(cid, None)
+    dado = message.text.strip()
+    
+    bot.send_message(cid, "🔍 Buscando informações na base de dados, aguarde...")
+    
+    url = ""
+    try:
+        if tipo == "cons_cpf":
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?cpf={dado}"
+        elif tipo == "cons_tel":
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?telefone={dado}"
+        elif tipo == "cons_email":
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?email={dado}"
+        elif tipo == "cons_rg":
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?rg={dado}"
+        elif tipo == "cons_nome":
+            nome_formatado = dado.replace(" ", "%20")
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?nome={nome_formatado}"
+        elif tipo == "cons_cep":
+            url = f"http://apisbrasilpro.site/telefone0.php?cep={dado}"
+        elif tipo == "cons_parente":
+            url = f"http://apisbrasilpro.site/consulta_serasa.php?cpf_parente={dado}"
+        elif tipo == "cons_spc":
+            if dado.isdigit():
+                url = f"http://apisbrasilpro.site/spc1.php?doc={dado}"
+            else:
+                nome_formatado = dado.replace(" ", "%20")
+                url = f"http://apisbrasilpro.site/spc1.php?nome={nome_formatado}"
+        
+        if url:
+            resposta = requests.get(url, timeout=15)
+            conteudo_bruto = resposta.text
+            
+            if not conteudo_bruto.strip():
+                resultado_final = "⚠️ Nenhum dado encontrado para esta consulta."
+            else:
+                resultado_final = formatar_resposta_json(conteudo_bruto)
+
+            bot.send_message(cid, resultado_final, parse_mode="Markdown")
+        else:
+            bot.send_message(cid, "⚠️ Tipo de consulta inválido.")
+            
+    except Exception as e:
+        bot.send_message(cid, f"❌ Erro ao conectar com a API: `{str(e)}`", parse_mode="Markdown")
+    
+    bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
+
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     cid = message.chat.id
@@ -220,7 +278,6 @@ def cmd_start(message):
 
     if foto_url:
         try:
-            # Envia a foto com a legenda e os botões embutidos juntos
             bot.send_photo(cid, foto_url, caption=texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
             return
         except Exception as e:
@@ -369,62 +426,6 @@ def callback_consultas(call):
     aguardando_input[cid] = tipo
     bot.answer_callback_query(call.id)
     bot.send_message(cid, instrucoes.get(tipo, "Envie o dado solicitado:"), parse_mode="Markdown")
-
-@bot.message_handler(func=lambda msg: msg.chat.id in aguardando_input)
-def processar_consulta(message):
-    cid = message.chat.id
-    uid = message.from_user.id
-    
-    if not verificar_acesso(uid):
-        bot.send_message(cid, "❌ Seu acesso expirou.")
-        return
-
-    tipo = aguardando_input.pop(cid, None)
-    dado = message.text.strip()
-    
-    bot.send_message(cid, "🔍 Buscando informações na base de dados, aguarde...")
-    
-    url = ""
-    try:
-        if tipo == "cons_cpf":
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?cpf={dado}"
-        elif tipo == "cons_tel":
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?telefone={dado}"
-        elif tipo == "cons_email":
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?email={dado}"
-        elif tipo == "cons_rg":
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?rg={dado}"
-        elif tipo == "cons_nome":
-            nome_formatado = dado.replace(" ", "%20")
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?nome={nome_formatado}"
-        elif tipo == "cons_cep":
-            url = f"http://apisbrasilpro.site/telefone0.php?cep={dado}"
-        eliftipo == "cons_parente": # type: ignore
-            url = f"http://apisbrasilpro.site/consulta_serasa.php?cpf_parente={dado}"
-        elif tipo == "cons_spc":
-            if dado.isdigit():
-                url = f"http://apisbrasilpro.site/spc1.php?doc={dado}"
-            else:
-                nome_formatado = dado.replace(" ", "%20")
-                url = f"http://apisbrasilpro.site/spc1.php?nome={nome_formatado}"
-        
-        if url:
-            resposta = requests.get(url, timeout=15)
-            conteudo_bruto = resposta.text
-            
-            if not conteudo_bruto.strip():
-                resultado_final = "⚠️ Nenhum dado encontrado para esta consulta."
-            else:
-                resultado_final = formatar_resposta_json(conteudo_bruto)
-
-            bot.send_message(cid, resultado_final, parse_mode="Markdown")
-        else:
-            bot.send_message(cid, "⚠️ Tipo de consulta inválido.")
-            
-    except Exception as e:
-        bot.send_message(cid, f"❌ Erro ao conectar com a API: `{str(e)}`", parse_mode="Markdown")
-    
-    bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
 
 print("[*] BOT DE CONSULTAS VIP COMPLETO ONLINE...")
 bot.infinity_polling()
