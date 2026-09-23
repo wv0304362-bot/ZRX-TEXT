@@ -29,7 +29,7 @@ def run_server():
 threading.Thread(target=run_server, daemon=True).start()
 # ----------------------------------------------------
 
-TOKEN = "8718117505:AAGlPcThjYZso68lQT7u4HwohBcbFsBmxv4"
+TOKEN = "8718117505:AAG6aod9bgi_mMnm15aIbChZfLodKfRqoLg"
 ID_DONO = 7714802499
 LINK_CONTATO = "https://t.me/Zenithzrx"
 LINK_WHATSAPP_CANAL = "https://whatsapp.com/channel/0029ValKVsrBFLgb53LmY22v"
