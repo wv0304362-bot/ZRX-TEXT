@@ -4,7 +4,6 @@ from telebot import types
 import os
 import json
 import requests
-import time
 import threading
 from datetime import datetime, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -14,7 +13,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot de Consultas com Assinatura Rodando 24h!")
+        self.wfile.write(b"Bot de Consultas VIP Rodando 24h!")
 
 def run_server():
     port = int(os.environ.get("PORT", 10000))
@@ -31,6 +30,20 @@ LINK_CONTATO = "https://t.me/Zenithzrx"
 bot = telebot.TeleBot(TOKEN)
 aguardando_input = {}
 ARQUIVO_USUARIOS = "usuarios_autorizados.json"
+ARQUIVO_CONFIG = "config_foto.json"
+
+def carregar_config():
+    if not os.path.exists(ARQUIVO_CONFIG):
+        return {"foto_url": None}
+    with open(ARQUIVO_CONFIG, 'r', encoding='utf-8') as f:
+        try:
+            return json.load(f)
+        except:
+            return {"foto_url": None}
+
+def salvar_config(dados):
+    with open(ARQUIVO_CONFIG, 'w', encoding='utf-8') as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
 
 def carregar_usuarios():
     if not os.path.exists(ARQUIVO_USUARIOS):
@@ -58,8 +71,16 @@ def verificar_acesso(uid):
                 return True
     return False
 
+def registrar_usuario_ativo(uid):
+    usuarios = carregar_usuarios()
+    str_uid = str(uid)
+    if str_uid not in usuarios and int(uid) != ID_DONO:
+        usuarios[str_uid] = {"validade": ""}
+        salvar_usuarios(usuarios)
+
 def menu_principal_teclado():
-    markup = types.InlineKeyboardMarkup(row_width=2)
+    # Botões um embaixo do outro (coluna única)
+    markup = types.InlineKeyboardMarkup(row_width=1)
     markup.add(
         types.InlineKeyboardButton("🔍 Consulta CPF", callback_data="cons_cpf"),
         types.InlineKeyboardButton("📱 Consulta Telefone", callback_data="cons_tel"),
@@ -132,25 +153,32 @@ def cmd_start(message):
     nome = message.from_user.first_name
     username = f"@{message.from_user.username}" if message.from_user.username else "Sem username"
 
-    # Se for grupo, exibe mensagem informativa básica
+    # Regra para Grupos (verifica se tem mais de 200 membros)
     if message.chat.type != 'private':
-        bot.send_message(cid, "🤖 *Bot de Consultas Online!*\nPara realizar consultas e ver os planos, chame no privado.", parse_mode="Markdown")
+        try:
+            membros = bot.get_chat_member_count(cid)
+            if membros >= 200:
+                bot.send_message(cid, f"🚀 Grupo com {membros} membros detectado! Bot liberado para uso no grupo.")
+            else:
+                bot.send_message(cid, "🤖 *Bot de Consultas Online!*\nPara usar livremente, o grupo precisa ter pelo menos 200 membros ou você pode assinar no privado.")
+        except:
+            pass
         return
+
+    registrar_usuario_ativo(uid)
 
     # Verifica se tem acesso liberado
     if not verificar_acesso(uid):
-        # Envia aviso de bloqueio com planos e link para o dono
         texto_bloqueio = (
             "⛔ *ACESSO RESTRITO / PLANO EXPIRADO*\n\n"
             "Este bot é pago. Escolha um dos planos abaixo para adquirir seu acesso:\n\n"
-            "• **10 Dias:** R$ 15,00\n"
-            "• **30 Dias:** R$ 25,00\n"
-            "• **100 Dias:** R$ 40,00\n\n"
+            "​💎 *10 Dias:* R$ 15,00\n"
+            "​💎 *30 Dias:* R$ 25,00\n"
+            "​💎 *100 Dias:* R$ 40,00\n\n"
             "Clique no botão abaixo para falar com o dono e comprar:"
         )
         bot.send_message(cid, texto_bloqueio, parse_mode="Markdown", reply_markup=menu_planos_pagamento())
 
-        # Notifica o Dono no PV dele com os dados completos do usuário
         notificacao_dono = (
             "🚨 *NOVO USUÁRIO TENTOU USAR O BOT*\n\n"
             f"👤 *Nome:* {nome}\n"
@@ -170,20 +198,37 @@ def cmd_start(message):
             pass
         return
 
-    # Se tiver acesso, libera o menu de consultas
-    texto = (
-        f"👋 Olha, *{nome}*! Seja bem-vindo à\n"
-        "🤖 *CENTRAL DE CONSULTAS DE DADOS*\n\n"
+    # Mensagem de boas-vindas personalizada solicitada
+    texto_sucesso = (
+        f"👋 Bem-vindo, *{nome}*!\n"
+        f"👤 *Perfil:* {nome}\n"
+        f"🆔 *ID:* `{uid}`\n\n"
+        "⚡ *PAINEL DE PUXAR DADOS VIP*\n\n"
+        "📋 *VALORES DOS PLANOS:*\n"
+        "​💎 *10 Dias:* R$ 15,00\n"
+        "​💎 *30 Dias:* R$ 25,00\n"
+        "​💎 *100 Dias:* R$ 40,00\n\n"
         "Selecione abaixo o tipo de consulta que deseja realizar:"
     )
-    bot.send_message(cid, texto, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+
+    config = carregar_config()
+    foto_url = config.get("foto_url")
+
+    if foto_url:
+        try:
+            bot.send_photo(cid, foto_url, caption=texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
+            return
+        except:
+            pass
+    
+    bot.send_message(cid, texto_sucesso, parse_mode="Markdown", reply_markup=menu_principal_teclado())
 
 @bot.callback_query_handler(func=lambda call: call.data == "verificar_liberacao")
 def verificar_liberacao_btn(call):
     uid = call.from_user.id
     if verificar_acesso(uid):
         bot.answer_callback_query(call.id, "✅ Acesso liberado com sucesso!", show_alert=True)
-        bot.send_message(call.message.chat.id, "🎉 Seu acesso foi confirmado!", reply_markup=menu_principal_teclado())
+        bot.send_message(call.message.chat.id, "🎉 Seu acesso foi confirmado! Envie /start para abrir o painel.", reply_markup=menu_principal_teclado())
     else:
         bot.answer_callback_query(call.id, "❌ Seu acesso ainda não foi aprovado pelo dono.", show_alert=True)
 
@@ -206,7 +251,7 @@ def callback_liberar_dono(call):
     bot.edit_message_text(f"{call.message.text}\n\n✅ *STATUS: LIBERADO por {dias} dias!*", call.message.chat.id, call.message.message_id, parse_mode="Markdown")
     
     try:
-        bot.send_message(int(uid_alvo), f"🎉 *SEU ACESSO FOI LIBERADO!*\nAproveite por {dias} dias. Envie /start para usar o bot.", parse_mode="Markdown", reply_markup=menu_principal_teclado())
+        bot.send_message(int(uid_alvo), f"🎉 *SEU ACESSO FOI LIBERADO!*\nAproveite por {dias} dias. Envie /start para usar o bot.", parse_mode="Markdown")
     except:
         pass
 
@@ -216,9 +261,9 @@ def painel_admin(message):
         return
     texto = (
         "👑 *PAINEL DE ADMINISTRAÇÃO*\n\n"
-        "Para liberar um usuário manualmente, use:\n"
-        "`/liberar [ID_DO_USUARIO] [DIAS]`\n\n"
-        "Exemplo: `/liberar 123456789 30`"
+        "• Para liberar usuário: `/liberar [ID] [DIAS]`\n"
+        "• Para alterar foto de boas-vindas: `/foto [URL da Imagem]` (ou mande a foto com a legenda `/foto`)\n"
+        "• Para mandar notificação geral: `/notificação [Sua Mensagem]`"
     )
     bot.send_message(message.chat.id, texto, parse_mode="Markdown")
 
@@ -243,6 +288,63 @@ def comando_liberar_manual(message):
             pass
     except:
         bot.send_message(message.chat.id, "⚠️ Uso incorreto. Use: `/liberar [ID] [DIAS]`", parse_mode="Markdown")
+
+@bot.message_handler(commands=['foto'])
+def comando_foto(message):
+    if message.from_user.id != ID_DONO:
+        return
+    
+    # Se mandou uma foto diretamente com a legenda /foto
+    if message.photo:
+        fileID = message.photo[-1].file_id
+        file_info = bot.get_file(fileID)
+        downloaded_file = bot.download_file(file_info.file_path)
+        
+        # Salva o file_id do Telegram diretamente
+        config = carregar_config()
+        config["foto_url"] = fileID
+        salvar_config(config)
+        bot.send_message(message.chat.id, "✅ Foto de boas-vindas atualizada com sucesso!")
+        return
+
+    # Se mandou um link via texto (/foto https://...)
+    try:
+        partes = message.text.split(maxsplit=1)
+        if len(partes) > 1:
+            url_foto = partes[1].strip()
+            config = carregar_config()
+            config["foto_url"] = url_foto
+            salvar_config(config)
+            bot.send_message(message.chat.id, "✅ URL da foto de boas-vindas atualizada com sucesso!")
+        else:
+            bot.send_message(message.chat.id, "⚠️ Envie o link junto com o comando ou mande a foto com a legenda `/foto`.", parse_mode="Markdown")
+    except:
+        bot.send_message(message.chat.id, "⚠️ Erro ao atualizar a foto.")
+
+@bot.message_handler(commands=['notificação', 'notificacao'])
+def comando_notificacao(message):
+    if message.from_user.id != ID_DONO:
+        return
+    
+    texto_aviso = message.text.replace("/notificação", "").replace("/notificacao", "").strip()
+    if not texto_aviso:
+        bot.send_message(message.chat.id, "⚠️ Escreva a mensagem após o comando. Ex: `/notificação Olá a todos!`", parse_mode="Markdown")
+        return
+    
+    usuarios = carregar_usuarios()
+    enviados = 0
+    erros = 0
+    
+    bot.send_message(message.chat.id, "📢 Disparando notificação para os usuários...")
+    
+    for uid_str in usuarios.keys():
+        try:
+            bot.send_message(int(uid_str), f"📢 *AVISO IMPORTANTE DO ADMIN:*\n\n{texto_aviso}", parse_mode="Markdown")
+            enviados += 1
+        except:
+            erros += 1
+            
+    bot.send_message(message.chat.id, f"✅ Disparo concluído!\n• Enviados com sucesso: {enviados}\n• Falhas (bloquearam o bot): {erros}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('cons_'))
 def callback_consultas(call):
@@ -325,5 +427,5 @@ def processar_consulta(message):
     
     bot.send_message(cid, "Deseja realizar outra consulta?", reply_markup=menu_principal_teclado())
 
-print("[*] BOT DE CONSULTAS PAGO ONLINE...")
+print("[*] BOT DE CONSULTAS VIP OTIMIZADO ONLINE...")
 bot.infinity_polling()
