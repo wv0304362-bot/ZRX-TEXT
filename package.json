@@ -1,0 +1,12 @@
+{
+  "name": "smm-panel",
+  "version": "1.0.0",
+  "description": "Painel SMM de Testes",
+  "main": "api/fazer_pedido.js",
+  "scripts": {
+    "start": "node api/fazer_pedido.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
